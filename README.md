@@ -71,6 +71,13 @@ artisan_connect/
 │   ├── package.json         # React and Vite dependencies
 │   └── vite.config.js       # Vite configuration
 │
+├── images/
+│   ├── front/               # Homepage category cover images
+│   ├── harvesting/          # Raw forest harvest images
+│   ├── kondapalli/          # Kondapalli Bommalu images
+│   ├── sarees/              # Kalamkari saree images
+│   └── Sikki Grass/         # Sikki grass product images
+│
 └── README.md
 ```
 
