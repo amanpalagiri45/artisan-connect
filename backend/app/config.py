@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # Database: Default SQLite for effortless local setup
     DATABASE_URL: str = "sqlite:///./artisan_connect.db"
 
+    # Google OpenID Connect settings. Configure these in backend/.env.
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    FRONTEND_URL: str = "http://localhost:5173"
+
     # CORS Origins
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost",

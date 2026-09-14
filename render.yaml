@@ -1,6 +1,7 @@
 services:
   - type: web
     name: artisan-connect-api
+    rootDir: backend
     env: python
     buildCommand: pip install -r requirements.txt && python seed.py
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -13,3 +14,22 @@ services:
         generateValue: true
       - key: DATABASE_URL
         value: sqlite:///./artisan_connect.db
+      - key: FRONTEND_URL
+        value: https://artisan-connect-web.onrender.com
+      - key: GOOGLE_REDIRECT_URI
+        value: https://artisan-connect-api.onrender.com/api/v1/auth/google/callback
+      # Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the Render dashboard.
+
+  - type: web
+    name: artisan-connect-web
+    rootDir: frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://artisan-connect-api.onrender.com/api/v1
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

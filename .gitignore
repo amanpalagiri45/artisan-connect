@@ -26,6 +26,10 @@ build/
 .pub-cache/
 .pub/
 
+# React / Vite
+node_modules/
+dist/
+
 # IDE & Editor
 .vscode/
 .idea/

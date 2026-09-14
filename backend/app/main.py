@@ -1,9 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.sessions import SessionMiddleware
 from app.config import settings
 from app.database import Base, engine
 from app.api import api_router
+from app.api.google_auth import router as google_auth_router
 
 # Create database tables automatically
 Base.metadata.create_all(bind=engine)
@@ -19,10 +21,17 @@ app = FastAPI(
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins in development
+    allow_origins=[origin for origin in settings.BACKEND_CORS_ORIGINS if origin != "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,
+    session_cookie="artisan_connect_session",
+    https_only=not settings.DEBUG,
+    same_site="lax",
 )
 
 
@@ -37,6 +46,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Mount main API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(google_auth_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")

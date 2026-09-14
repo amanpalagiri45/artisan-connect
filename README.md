@@ -10,11 +10,10 @@ ARTISAN CONNECT is an MVP platform designed to empower traditional, rural, and i
 
 ```
                                   ┌────────────────────────────────────────┐
-                                  │      Flutter Mobile Frontend           │
-                                  │  - Artisan Profile & Registration      │
-                                  │  - Smart Catalog with Fuzzy Search     │
-                                  │  - Artisan KPI Metrics Dashboard       │
-                                  │  - Buyer Direct Inquiries & Alerts     │
+                                  │        React + Vite Frontend           │
+                                  │  - Public Artisan Product Catalog      │
+                                  │  - Product Search & Detail Views       │
+                                  │  - Responsive Web Experience           │
                                   └───────────────────┬────────────────────┘
                                                       │ REST / JSON (JWT Auth)
                                                       ▼
@@ -36,7 +35,7 @@ ARTISAN CONNECT is an MVP platform designed to empower traditional, rural, and i
                                   └────────────────────────────────────────┘
 ```
 
-- **Frontend:** Flutter (Mobile Android/iOS, Web, Desktop) with Provider state management & Craft-Earth palette.
+- **Frontend:** React with Vite, Lucide icons, and responsive CSS for the public web catalog.
 - **Backend:** Python 3.10+ / FastAPI with SQLAlchemy, Pydantic v2 schemas, JWT Bearer RBAC, and SQLite.
 - **Fuzzy Search:** Token sort ratio matching across craft titles, descriptions, materials, and artisan regions.
 - **AI Smart Cataloging:** Generates storytelling descriptions, SEO discovery tags, and fair-trade pricing bounds.
@@ -64,16 +63,13 @@ artisan_connect/
 │   └── run.py               # Uvicorn server execution script
 │
 ├── frontend/
-│   ├── lib/
-│   │   ├── config/          # API URLs, Earthy Craft Palette theme
-│   │   ├── models/          # User, Artisan, Product, Linkage, Notification models
-│   │   ├── services/        # HTTP API client, LocalStorage
-│   │   ├── state/           # Auth, Product, Artisan, and Notification providers
-│   │   ├── screens/         # Login, Register, Catalog, Product Detail, Add Listing, Dashboard, Notifications
-│   │   ├── widgets/         # ArtisanBadge, MetricCard, ProductCard, SearchBarWidget
-│   │   └── main.dart        # Flutter entry point
-│   ├── pubspec.yaml         # Flutter dependencies
-│   └── web/index.html       # Web runner support
+│   ├── src/
+│   │   ├── api.js           # Public REST client
+│   │   ├── App.jsx          # Guest catalog and product detail views
+│   │   ├── main.jsx         # React entry point
+│   │   └── styles.css       # Responsive web application styling
+│   ├── package.json         # React and Vite dependencies
+│   └── vite.config.js       # Vite configuration
 │
 └── README.md
 ```
@@ -155,21 +151,70 @@ The test suite validates:
 
 ---
 
-### 3. Frontend Setup (Flutter)
+### 3. Frontend Setup (React + Vite)
 
-#### Non-Localhost Connectivity (Physical Mobile Devices & Cloud):
-1. **In-App Configuration (Easiest):**
-   Tap the **Server/Network icon (`DNS`)** on the top-right of the Sign In screen to enter your backend URL:
-   - **Wi-Fi LAN (for physical phone):** `http://192.168.55.103:8000/api/v1`
-   - **Cloud Deployment:** `https://artisan-connect-api.onrender.com/api/v1`
-   *(Changes are automatically persisted to device storage)*.
+The web frontend lives in `frontend/` and uses React, Vite, and the existing FastAPI REST API.
 
-2. **Compile-Time Cloud URL:**
-   ```bash
-   flutter run --dart-define=API_BASE_URL=https://your-cloud-api.com/api/v1
-   ```
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-3. **Instant Free Public HTTPS Tunnel (Zero Deployment):**
+### Google Sign-In Setup
+
+The frontend uses the backend's server-side Google OAuth 2.0 / OpenID Connect flow. Google tokens are exchanged on the backend and the signed session is stored in an HTTP-only cookie; the browser does not store Google tokens.
+
+1. In Google Cloud Console, create an OAuth client with application type **Web application**.
+2. Add `http://localhost:8000/api/v1/auth/google/callback` as an authorized redirect URI.
+3. Copy `backend/.env.example` to `backend/.env` and replace `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+4. Keep `FRONTEND_URL=http://localhost:5173` for local development.
+5. Start the backend, then start the frontend and open `http://localhost:5173`.
+
+For deployment, use HTTPS and set `GOOGLE_REDIRECT_URI` to the public backend callback URL, `FRONTEND_URL` to the public frontend URL, and `DEBUG=false`. Add the production callback URL to the Google Cloud OAuth credential.
+
+### Deploy Publicly on Render
+
+The root `render.yaml` defines both public services:
+
+- `artisan-connect-api`: FastAPI backend
+- `artisan-connect-web`: React static website
+
+1. Push the repository to GitHub and create a Render Blueprint from the repository.
+2. In the backend service environment, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+3. In Google Cloud Console, add this authorized redirect URI:
+  `https://artisan-connect-api.onrender.com/api/v1/auth/google/callback`
+4. Open the public website at:
+  `https://artisan-connect-web.onrender.com`
+
+If Render assigns different service URLs, update `FRONTEND_URL`, `GOOGLE_REDIRECT_URI`, and `VITE_API_BASE_URL` in the Blueprint or service settings to match them.
+
+Open `http://localhost:5173`. To point the app at another API server:
+
+```bash
+npm run dev -- --host 0.0.0.0
+# or set VITE_API_BASE_URL before building
+```
+
+Example production build configuration:
+
+```powershell
+$env:VITE_API_BASE_URL="https://your-api.example.com/api/v1"
+npm run build
+```
+
+### 4. Frontend API Connectivity
+
+Set `VITE_API_BASE_URL` when the backend is not running on localhost:
+
+```powershell
+$env:VITE_API_BASE_URL="https://your-cloud-api.com/api/v1"
+npm run build
+```
+
+For local device or cloud testing, expose the backend with a tunnel:
+
+```bash
    Expose your backend to any phone in the world with one command:
    ```bash
    # Using localtunnel:
@@ -178,7 +223,7 @@ The test suite validates:
    # Or using ngrok:
    ngrok http 8000
    ```
-   Copy the generated `https://...` URL into the Flutter app or pass via `--dart-define`.
+   Set the generated `https://...` URL in `VITE_API_BASE_URL` before building.
 
 ---
 
@@ -196,45 +241,21 @@ The repository includes a ready-to-deploy [`render.yaml`](../render.yaml) and [`
 1. Push this repository to GitHub.
 2. Connect to [Render.com](https://render.com) or [Railway.app](https://railway.app).
 3. Select "Web Service" -> it automatically detects Python, installs dependencies, runs `seed.py`, and exposes a public HTTPS endpoint.
-4. Paste the public URL into your Flutter mobile app.
+4. Set the public URL in `VITE_API_BASE_URL` before building the web frontend.
 
 ---
-
-## 🔑 Demo User Credentials (Pre-seeded)
-
-All seeded accounts use password: `password123`
-
-| Role | Email | Name | Craft Specialty / Focus |
-| :--- | :--- | :--- | :--- |
-| **Artisan** | `ramlal.pottery@artisanconnect.org` | Ramlal Meena | Jaipur Blue Pottery & Terracotta (Rajasthan) |
-| **Artisan** | `shanti.devi@artisanconnect.org` | Shanti Devi | Handloom & Mithila Folk Textiles (Bihar) |
-| **Artisan** | `kavi.murugan@artisanconnect.org` | Kavi Murugan | Lost-Wax Bronze & Bell Metal (Tamil Nadu) |
-| **Artisan** | `fatimah.begum@artisanconnect.org` | Fatimah Begum | Chikankari & Shadow Embroidery (Uttar Pradesh) |
-| **Buyer** | `sarah.jenkins@ethicalliving.com` | Sarah Jenkins | Ethical Living Boutique (Austin, TX) |
-| **Buyer** | `marco.rossi@heritageimports.eu` | Marco Rossi | Heritage Home Imports (Milan, Italy) |
-| **Admin** | `admin@artisanconnect.org` | Artisan Connect Admin | System Administration |
-
-*(Note: The Flutter login screen features convenient "Artisan Demo" and "Buyer Demo" autofill buttons for rapid testing).*
 
 ---
 
 ## 🔄 Core User Journey Walkthrough
 
-### 1. Artisan Lists Product with AI Assistance:
-1. Sign in as Artisan (`ramlal.pottery@artisanconnect.org`).
-2. Tap **"New Listing"** or Floating Action Button in Catalog.
-3. Enter Craft Type (e.g. `Terracotta Pottery`) and short description (e.g. `River clay water cooling pitcher hand-shaped on traditional wheel`).
-4. Tap **"Auto-Enhance with AI"** (`POST /api/v1/products/smart-suggest`).
-5. The system generates an enhanced title, cultural heritage narrative, recommended fair-trade price, detected materials, and SEO discovery tags.
-6. Tap **"Publish Craft to Marketplace"**.
-
-### 2. Buyer Discovers & Searches Crafts:
+### 1. Visitor Discovers & Searches Crafts:
 1. Browse the **Catalog** tab.
 2. Type queries like `"blue pottery"`, `"handloom"`, `"clay planter"`, or select category chips.
 3. The backend fuzzy search engine ranks items based on title, description, materials, and tags.
 4. Tap on any craft card to view the heritage narrative and pricing transparency.
 
-### 3. Market Linkage & Direct Inquiry:
+### 2. Future Market Linkage:
 1. On the product detail page, tap **"Direct Connect"**.
 2. Specify procurement quantity (e.g., `25` units), proposed unit price, and delivery requirements.
 3. Tap **"Send Market Linkage Inquiry"** (`POST /api/v1/linkages/inquire`).
