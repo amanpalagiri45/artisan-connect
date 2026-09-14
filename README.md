@@ -168,18 +168,6 @@ npm install
 npm run dev
 ```
 
-### Google Sign-In Setup
-
-The frontend uses the backend's server-side Google OAuth 2.0 / OpenID Connect flow. Google tokens are exchanged on the backend and the signed session is stored in an HTTP-only cookie; the browser does not store Google tokens.
-
-1. In Google Cloud Console, create an OAuth client with application type **Web application**.
-2. Add `http://localhost:8000/api/v1/auth/google/callback` as an authorized redirect URI.
-3. Copy `backend/.env.example` to `backend/.env` and replace `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-4. Keep `FRONTEND_URL=http://localhost:5173` for local development.
-5. Start the backend, then start the frontend and open `http://localhost:5173`.
-
-For deployment, use HTTPS and set `GOOGLE_REDIRECT_URI` to the public backend callback URL, `FRONTEND_URL` to the public frontend URL, and `DEBUG=false`. Add the production callback URL to the Google Cloud OAuth credential.
-
 ### Deploy Publicly on Render
 
 The root `render.yaml` defines both public services:
@@ -188,13 +176,8 @@ The root `render.yaml` defines both public services:
 - `artisan-connect-web`: React static website
 
 1. Push the repository to GitHub and create a Render Blueprint from the repository.
-2. In the backend service environment, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-3. In Google Cloud Console, add this authorized redirect URI:
-  `https://artisan-connect-api.onrender.com/api/v1/auth/google/callback`
-4. Open the public website at:
+2. Open the public website at:
   `https://artisan-connect-web.onrender.com`
-
-If Render assigns different service URLs, update `FRONTEND_URL`, `GOOGLE_REDIRECT_URI`, and `VITE_API_BASE_URL` in the Blueprint or service settings to match them.
 
 Open `http://localhost:5173`. To point the app at another API server:
 

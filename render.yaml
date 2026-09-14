@@ -14,12 +14,6 @@ services:
         generateValue: true
       - key: DATABASE_URL
         value: sqlite:///./artisan_connect.db
-      - key: FRONTEND_URL
-        value: https://artisan-connect-web.onrender.com
-      - key: GOOGLE_REDIRECT_URI
-        value: https://artisan-connect-api.onrender.com/api/v1/auth/google/callback
-      # Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the Render dashboard.
-
   - type: web
     name: artisan-connect-web
     rootDir: frontend
