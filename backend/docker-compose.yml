@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  artisan-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: artisan_connect_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=False
+      - SECRET_KEY=artisan-connect-prod-secure-jwt-key
+      - DATABASE_URL=sqlite:///./artisan_connect.db
+    volumes:
+      - artisan_data:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  artisan_data:
