@@ -14,7 +14,7 @@ from app.schemas.product import (
 )
 from app.services.catalog_ai_service import CatalogAIService
 from app.services.search_service import ProductSearchService
-from app.api.deps import get_current_artisan_user
+from app.api.deps import get_current_artisan_user, get_current_buyer_user
 
 router = APIRouter(prefix="/products", tags=["Products & Catalog"])
 
@@ -58,11 +58,7 @@ def _enrich_product_response(product: Product, db: Session) -> ProductResponse:
 
 @router.post("/smart-suggest", response_model=SmartCatalogSuggestResponse)
 def get_smart_catalog_suggestion(request: SmartCatalogSuggestRequest):
-    """
-    AI Smart Cataloging Assistant: Analyzes basic artisan inputs to produce
-    market-ready titles, rich storytelling descriptions, standardized tags,
-    and fair-trade price recommendations.
-    """
+    """Generate a market-ready product listing suggestion."""
     return CatalogAIService.analyze_and_suggest(
         craft_type=request.craft_type,
         raw_description=request.raw_description,
@@ -81,17 +77,10 @@ def browse_catalog(
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
-    """
-    Browses the artisan product catalog with multi-attribute fuzzy search and filters.
-    """
+    """Browse the artisan product catalog."""
     products = ProductSearchService.search_and_filter(
-        db=db,
-        query_str=q,
-        craft_type=craft_type,
-        min_price=min_price,
-        max_price=max_price,
-        region=region,
-        limit=limit
+        db=db, query_str=q, craft_type=craft_type, min_price=min_price,
+        max_price=max_price, region=region, limit=limit
     )
     return [_enrich_product_response(p, db) for p in products]
 
@@ -101,26 +90,52 @@ def get_my_products(
     artisan_tuple=Depends(get_current_artisan_user),
     db: Session = Depends(get_db)
 ):
-    """Returns listings belonging to the authenticated artisan."""
+    """Return listings belonging to the authenticated artisan."""
     _, artisan = artisan_tuple
     products = db.query(Product).filter(Product.artisan_id == artisan.id).order_by(Product.created_at.desc()).all()
     return [_enrich_product_response(p, db) for p in products]
 
 
+@router.post("/{product_id}/buy")
+def buy_product(
+    product_id: int,
+    quantity: int = Query(1, ge=1, le=1000),
+    buyer: User = Depends(get_current_buyer_user),
+    db: Session = Depends(get_db)
+):
+    """Reserve/buy stock for an authenticated buyer and reduce inventory."""
+    product = db.query(Product).filter(Product.id == product_id).with_for_update().first()
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    if not product.is_available or product.stock_quantity < quantity:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough stock available")
+
+    product.stock_quantity -= quantity
+    if product.stock_quantity == 0:
+        product.is_available = False
+
+    db.commit()
+    return {
+        "message": "Purchase reserved successfully",
+        "buyer_id": buyer.id,
+        "product_id": product.id,
+        "quantity": quantity,
+        "unit_price": product.price,
+        "total_price": round(product.price * quantity, 2),
+        "remaining_stock": product.stock_quantity,
+        "payment_required": True,
+    }
+
+
 @router.get("/{product_id}", response_model=ProductResponse)
 def get_product_details(product_id: int, db: Session = Depends(get_db)):
-    """
-    Retrieves full product details and increments view analytics counter.
-    """
+    """Retrieve full product details and increment its view counter."""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-
-    # Increment view counter
     product.views_count = (product.views_count or 0) + 1
     db.commit()
     db.refresh(product)
-
     return _enrich_product_response(product, db)
 
 
@@ -130,9 +145,7 @@ def create_product(
     artisan_tuple=Depends(get_current_artisan_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Publishes a new handcrafted product listing for the logged-in artisan.
-    """
+    """Publish a new handcrafted product listing for the logged-in artisan."""
     _, artisan = artisan_tuple
     new_product = Product(
         artisan_id=artisan.id,
@@ -148,7 +161,7 @@ def create_product(
         image_url=product_in.image_url,
         ai_tags=product_in.ai_tags,
         ai_suggested_price=product_in.ai_suggested_price,
-        is_available=True,
+        is_available=product_in.stock_quantity > 0,
         views_count=0
     )
     db.add(new_product)
@@ -164,18 +177,18 @@ def update_product(
     artisan_tuple=Depends(get_current_artisan_user),
     db: Session = Depends(get_db)
 ):
-    """Updates a product listing. Only the artisan owner can update."""
+    """Update a product listing. Only the artisan owner can update it."""
     _, artisan = artisan_tuple
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     if product.artisan_id != artisan.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to edit this listing")
-
     update_data = product_in.model_dump(exclude_unset=True)
     for key, val in update_data.items():
         setattr(product, key, val)
-
+    if "stock_quantity" in update_data and product.stock_quantity == 0:
+        product.is_available = False
     db.commit()
     db.refresh(product)
     return _enrich_product_response(product, db)
@@ -187,14 +200,13 @@ def delete_product(
     artisan_tuple=Depends(get_current_artisan_user),
     db: Session = Depends(get_db)
 ):
-    """Deletes or archives a product listing."""
+    """Delete a product listing."""
     _, artisan = artisan_tuple
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     if product.artisan_id != artisan.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this listing")
-
     db.delete(product)
     db.commit()
     return None
