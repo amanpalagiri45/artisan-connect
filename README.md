@@ -2,7 +2,66 @@
 
 **AI-Driven Market Linkage & Smart Cataloging Platform for Marginalized Artisans**
 
-ARTISAN CONNECT is an MVP platform designed to empower traditional, rural, and indigenous craftspeople by bridging the digital divide. It provides smart AI cataloging assistance, direct buyer market linkage matching without predatory intermediaries, real-time inquiry notifications, and sales performance analytics.
+ARTISAN CONNECT is an MVP platform designed to empower traditional, rural, and indigenous craftspeople by bridging the digital divide. It provides smart AI cataloging assistance, direct buyer market linkage, product selling, and buyer discovery.
+
+---
+
+## 🛒 Selling and Buying Products
+
+ARTISAN CONNECT supports a direct artisan-to-buyer marketplace.
+
+### Artisans can sell products
+
+1. Register or sign in with an **artisan** account.
+2. Create a product listing with:
+   - Product name and description
+   - Craft type and materials
+   - Price and available stock
+   - Product dimensions and weight
+   - Product image
+3. Use the AI cataloging assistant to generate:
+   - A market-ready product title
+   - An enhanced product description
+   - Search and SEO tags
+   - Fair-trade price recommendations
+4. Upload or take a product photo. The image-enhancement service improves brightness, color, contrast, sharpness, and image size while preserving the original photo.
+5. Publish the product to the public catalog.
+6. Manage, update, or remove listings from the artisan dashboard.
+
+### Buyers can discover and buy products
+
+1. Browse the public product catalog without signing in.
+2. Search products by name, craft, material, artisan, or region.
+3. Open a product to view its description, artisan story, price, and availability.
+4. Send a direct inquiry to the artisan for a custom or wholesale order.
+5. Authenticated buyers can purchase available stock through the product purchase endpoint.
+6. The purchase flow checks stock, calculates the total price, reduces inventory, and marks the product unavailable when the remaining stock reaches zero.
+7. Buyers can view their submitted inquiries and receive status notifications when an artisan accepts or declines an inquiry.
+
+### Buyer and artisan matching
+
+The market-linkage matching engine ranks suitable artisan-product matches using:
+
+- Craft type and technique
+- Materials and AI-generated tags
+- Buyer budget and product price
+- Preferred region
+- Order quantity
+- Verified cooperative status
+
+Each match includes a score from 0 to 100 and an explanation of why the match was recommended. Buyers can use `POST /api/v1/linkages/match` to find suitable artisans, while artisans receive notifications when buyers submit inquiries.
+
+### Important purchase note
+
+The current purchase endpoint reserves stock and records the purchase calculation, but it does not process real payments. A payment provider such as Stripe, Razorpay, or PayPal must be integrated before accepting live payments.
+
+---
+
+## 🎙️ Voice Product Descriptions and Photo Enhancement
+
+Artisans can speak their product description using browser speech recognition. The spoken words are converted into editable text in the product form. Artisans can also take or upload a product photo, which is processed by the backend image-enhancement service before it is attached to a listing.
+
+Voice input works best in Chrome or Edge and requires microphone permission. Camera access requires a secure HTTPS deployment or localhost and requires camera permission.
 
 ---
 
@@ -23,6 +82,8 @@ ARTISAN CONNECT is an MVP platform designed to empower traditional, rural, and i
                                   │  ├── Smart Cataloging AI Engine        │
                                   │  ├── Fuzzy Search & Match Filtering    │
                                   │  ├── Market Linkage Matching Logic     │
+                                  │  ├── Product Buying & Stock Management │
+                                  │  ├── Product Photo Enhancement         │
                                   │  ├── Notification Dispatcher           │
                                   │  └── Artisan Analytics Aggregator      │
                                   └───────────────────┬────────────────────┘
@@ -39,6 +100,7 @@ ARTISAN CONNECT is an MVP platform designed to empower traditional, rural, and i
 - **Backend:** Python 3.10+ / FastAPI with SQLAlchemy, Pydantic v2 schemas, JWT Bearer RBAC, and SQLite.
 - **Fuzzy Search:** Token sort ratio matching across craft titles, descriptions, materials, and artisan regions.
 - **AI Smart Cataloging:** Generates storytelling descriptions, SEO discovery tags, and fair-trade pricing bounds.
+- **Photo Enhancement:** Pillow-based processing improves uploaded artisan product photos.
 
 ---
 
@@ -55,6 +117,7 @@ artisan_connect/
 │   │   ├── config.py        # Environment settings
 │   │   ├── database.py      # SQLAlchemy session and engine setup
 │   │   └── main.py          # FastAPI application entrypoint
+│   ├── uploads/             # Enhanced product images
 │   ├── tests/
 │   │   └── test_api.py      # Automated integration & endpoint test suite
 │   ├── .env.example         # Sample environment variables
@@ -64,8 +127,9 @@ artisan_connect/
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── api.js           # Public REST client
+│   │   ├── api.js           # Public REST client and photo-upload client
 │   │   ├── App.jsx          # Guest catalog and product detail views
+│   │   ├── CameraCapture.jsx # Mobile camera capture component
 │   │   ├── main.jsx         # React entry point
 │   │   └── styles.css       # Responsive web application styling
 │   ├── package.json         # React and Vite dependencies
@@ -123,7 +187,6 @@ cp .env.example .env
 ```
 
 #### Step 5: Seed the database with realistic sample data
-Populates authentic artisan makers (Jaipur Blue Pottery, Mithila Handloom, Swamimalai Bronze, Lucknow Chikankari), sample products, buyer linkages, and notifications:
 ```bash
 python seed.py
 ```
@@ -140,7 +203,6 @@ python run.py
 
 ### 2. Running Automated Tests
 
-Run the backend integration test suite using `pytest`:
 ```bash
 cd backend
 pytest -v tests/test_api.py
@@ -160,142 +222,73 @@ The test suite validates:
 
 ### 3. Frontend Setup (React + Vite)
 
-The web frontend lives in `frontend/` and uses React, Vite, and the existing FastAPI REST API.
-
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### Deploy Publicly on Render
-
-The root `render.yaml` defines both public services:
-
-- `artisan-connect-api`: FastAPI backend
-- `artisan-connect-web`: React static website
-
-1. Push the repository to GitHub and create a Render Blueprint from the repository.
-2. Open the public website at:
-  `https://artisan-connect-web.onrender.com`
-
-Open `http://localhost:5173`. To point the app at another API server:
+For mobile camera testing on a local network:
 
 ```bash
 npm run dev -- --host 0.0.0.0
-# or set VITE_API_BASE_URL before building
 ```
 
-Example production build configuration:
-
-```powershell
-$env:VITE_API_BASE_URL="https://your-api.example.com/api/v1"
-npm run build
-```
-
-### 4. Frontend API Connectivity
-
-Set `VITE_API_BASE_URL` when the backend is not running on localhost:
-
-```powershell
-$env:VITE_API_BASE_URL="https://your-cloud-api.com/api/v1"
-npm run build
-```
-
-For local device or cloud testing, expose the backend with a tunnel:
-
-```bash
-   Expose your backend to any phone in the world with one command:
-   ```bash
-   # Using localtunnel:
-   npx localtunnel --port 8000
-
-   # Or using ngrok:
-   ngrok http 8000
-   ```
-   Set the generated `https://...` URL in `VITE_API_BASE_URL` before building.
-
----
-
-## ☁️ Cloud & Docker Deployment
-
-### Deploy via Docker
-```bash
-cd backend
-docker build -t artisan-connect-backend .
-docker run -p 8000:8000 artisan-connect-backend
-```
-
-### Deploy to Render / Railway / Cloud Run
-The repository includes a ready-to-deploy [`render.yaml`](../render.yaml) and [`backend/Dockerfile`](backend/Dockerfile):
-1. Push this repository to GitHub.
-2. Connect to [Render.com](https://render.com) or [Railway.app](https://railway.app).
-3. Select "Web Service" -> it automatically detects Python, installs dependencies, runs `seed.py`, and exposes a public HTTPS endpoint.
-4. Set the public URL in `VITE_API_BASE_URL` before building the web frontend.
-
----
-
----
-
-## 🔄 Core User Journey Walkthrough
-
-### 1. Visitor Discovers & Searches Crafts:
-1. Browse the **Catalog** tab.
-2. Type queries like `"blue pottery"`, `"handloom"`, `"clay planter"`, or select category chips.
-3. The backend fuzzy search engine ranks items based on title, description, materials, and tags.
-4. Tap on any craft card to view the heritage narrative and pricing transparency.
-
-### 2. Future Market Linkage:
-1. On the product detail page, tap **"Direct Connect"**.
-2. Specify procurement quantity (e.g., `25` units), proposed unit price, and delivery requirements.
-3. Tap **"Send Market Linkage Inquiry"** (`POST /api/v1/linkages/inquire`).
-4. The backend calculates a **Match Score (0-100%)** based on craft type, materials, budget, and geographic cluster.
-5. A real-time **Notification** is dispatched to the artisan.
-
-### 4. Artisan Receives Notification & Reviews Dashboard:
-1. Switch to the artisan account.
-2. The **Alerts** tab shows a badge and inquiry details.
-3. The **Artisan Dashboard** updates:
-   - **Pipeline Revenue** increases reflecting the order value.
-   - **Buyer Inquiries** count updates with pending badge.
-   - Artisan can tap **"Accept"** or **"Decline"** directly from the dashboard.
-4. When accepted, an automated notification is dispatched back to the buyer!
+Camera and microphone features require permission. For phone testing, use HTTPS or a secure tunnel such as localtunnel/ngrok.
 
 ---
 
 ## 📡 API Endpoints Overview
 
 ### Authentication (`/api/v1/auth`)
-- `POST /register`: Register user (buyer or artisan with profile details).
-- `POST /login`: JSON credentials login returning JWT bearer token.
-- `POST /token`: OAuth2 form login for Swagger docs.
-- `GET /me`: Authenticated user profile.
-
-### Artisans (`/api/v1/artisans`)
-- `GET /`: Directory of registered artisans with craft & region filters.
-- `GET /{id}`: Public artisan profile with products.
-- `GET /me/profile`: Authenticated artisan's own profile.
-- `PUT /me/profile`: Update artisan craft, story, and bio.
+- `POST /register`: Register a buyer or artisan.
+- `POST /login`: Log in and receive a JWT bearer token.
+- `GET /me`: Get the authenticated user profile.
 
 ### Products (`/api/v1/products`)
-- `GET /`: Fuzzy search and filtered product catalog.
-- `GET /{id}`: Product details with view counter increment.
-- `POST /`: Create handcrafted listing (Artisan only).
-- `POST /smart-suggest`: AI Smart Cataloging assistant (storytelling, tags, fair pricing).
-- `GET /my/listings`: Artisan's own catalog listings.
+- `GET /`: Browse and search products.
+- `GET /{id}`: View product details.
+- `POST /`: Create a product listing as an artisan.
+- `POST /{id}/buy`: Reserve/buy available stock as an authenticated buyer.
+- `POST /smart-suggest`: Generate AI catalog title, description, tags, and pricing suggestions.
+- `GET /my/listings`: View the artisan's listings.
+
+### AI Product Tools (`/api/v1/ai`)
+- `POST /enhance-product-photo`: Upload a JPG, PNG, or WebP product image and receive an enhanced image URL.
 
 ### Market Linkages (`/api/v1/linkages`)
-- `POST /inquire`: Buyer initiates sourcing inquiry with match scoring & notification.
-- `POST /match`: Buyer runs AI matching engine against all artisans.
-- `GET /artisan`: Artisan views incoming inquiries.
-- `GET /buyer`: Buyer views outgoing procurement requests.
-- `PUT /{id}/status`: Artisan accepts, declines, or updates linkage status.
+- `POST /inquire`: Buyer submits a sourcing or product inquiry.
+- `POST /match`: Match buyer requirements with suitable artisans and products.
+- `GET /artisan`: Artisan views incoming buyer inquiries.
+- `GET /buyer`: Buyer views submitted inquiries.
+- `PUT /{id}/status`: Artisan accepts, declines, or updates an inquiry.
 
-### Notifications (`/api/v1/notifications`)
-- `GET /`: List notifications for current user.
-- `GET /unread-count`: Badge count of unread notifications.
-- `PUT /{id}/read`: Mark notification as read.
-- `PUT /mark-all-read`: Mark all notifications as read.
+---
 
-### Analytics (`/api/v1/analytics`)
-- `GET /artisan/dashboard`: Aggregated artisan KPI metrics (potential revenue, conversion rate, views, inquiries, top crafts).
+## 🔄 Core User Journeys
+
+### Artisan selling journey
+1. Register as an artisan.
+2. Speak the product description or type it manually.
+3. Take or upload a product photo.
+4. Enhance the photo and preview it.
+5. Use AI catalog suggestions to improve the title, description, tags, and price.
+6. Add stock quantity and publish the listing.
+7. Receive buyer inquiries and match notifications.
+
+### Buyer purchasing journey
+1. Browse or search the catalog.
+2. Open a product listing.
+3. Review the artisan story, image, price, and stock.
+4. Sign in as a buyer.
+5. Purchase available stock or send a direct inquiry.
+6. Receive notifications about the inquiry or order status.
+
+---
+
+## ⚠️ Production Notes
+
+- The purchase endpoint currently manages stock and returns the total price; integrate Stripe, Razorpay, or another payment provider before accepting real payments.
+- Store uploaded images in object storage such as S3 or Cloudinary for production deployments instead of local disk.
+- Use HTTPS for camera and microphone access.
+- Set a strong production `SECRET_KEY` in the environment.
